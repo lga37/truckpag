@@ -1,0 +1,81 @@
+version: '3'
+
+networks:
+  webapp:
+
+volumes:
+  volsqlserver:
+  volgusmysql:
+
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: ${APP_NAME}_nginx
+    ports:
+      - 7000:80
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:rw
+    depends_on:
+      - php
+      - sqlserver
+      - mysql
+    networks:
+      - webapp
+
+  php:
+    build:
+      context: ./docker
+      dockerfile: php.dockerfile
+    image: voipgus/meuphp
+    container_name: ${APP_NAME}_php
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - 9009:9000
+    networks:
+      - webapp
+
+
+  mysql:
+    #image: mysql:8.0
+    image: mariadb:latest
+    container_name: ${APP_NAME}_mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 3315:3306
+    volumes:
+      - volgusmysql:/var/lib/mysql/data
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - webapp
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    ports:
+      - 1433:1433
+    volumes:
+      - volsqlserver:/var/lib/mssqlql/data
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=123
+
+
+      
+  npm:
+    image: node:13.7
+    container_name: ${APP_NAME}_npm
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - 3033:3000
+ 
+    working_dir: /var/www/html
+    entrypoint: ['npm','install']
+    networks:
+      - webapp
